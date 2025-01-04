@@ -1,10 +1,10 @@
-import { Socket } from "socket.io";
+import { Server, Socket } from "socket.io";
 import { USERS } from "../state/UserState";
 import { createBoard } from "../utils/CreateBoard";
 import { BOARDS, Player } from "../state/BoardState";
-import { CheckWinner } from "../utils/CheckWinner";
+import { isGameFinish } from "../utils/CheckWinner";
 
-export const socketController = (socket: Socket) => { 
+export const socketController = (socket: Socket , io:Server) => { 
 
     console.log("User connected", socket.id)
     USERS.set(socket.id ,{ boardId: null, findMatch: false });
@@ -22,6 +22,10 @@ export const socketController = (socket: Socket) => {
         })
     })
 
+    socket.on("cancelFindMatch", () => {
+        USERS.get(socket.id)!.findMatch = false;
+    })
+
     socket.on("makeMove", (data: { boardId: string, row: number, col: number }) => {
         const board = BOARDS.get(data.boardId);
 
@@ -34,24 +38,26 @@ export const socketController = (socket: Socket) => {
         }
 
         board.board[data.row][data.col] = board.symbols[socket.id];
+        console.log("Board is "+ board.board)
 
         socket.emit("moveMade", { row: data.row, col: data.col, symbol: board.symbols[socket.id] });
         
         const opponentId = board.turn === Player.user1 ? board.user2 : board.user1;
         socket.broadcast.to(opponentId).emit("moveMade", { row: data.row, col: data.col, symbol: board.symbols[socket.id] });
         
-        // CheckWinner();
-
-        socket.emit("yourTurn", false);
-        socket.broadcast.to(opponentId).emit("yourTurn", true);
-
-        board.turn = board.turn === Player.user1 ? Player.user2 : Player.user1;
+        if (isGameFinish(socket, io, board)) {
+            
+        }
+        else {   
+            socket.emit("yourTurn", false);
+            socket.broadcast.to(opponentId).emit("yourTurn", true);
+            
+            board.turn = board.turn === Player.user1 ? Player.user2 : Player.user1;
+        }
     });
 
     socket.on("StartGame", (boardId: string) => {
-        console.log("StartGame", boardId)
         const board = BOARDS.get(boardId);
-        console.log(board)
         if (!board) return;
         
         if (board.turn === Player.user1 && socket.id === board.user1) {

@@ -3,7 +3,7 @@ export enum Player {
     user2 = "user2"
 }
 
-interface Board {
+export interface Board {
     user1: string;
     user2: string;
     board: string[][];

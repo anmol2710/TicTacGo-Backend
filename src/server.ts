@@ -21,7 +21,7 @@ app.get("/", (req:Request, res:any) => {
 })
 
 io.on("connection", (socket) => {
-    socketController(socket);
+    socketController(socket , io);
 })
 
 server.listen(3000, () => {
